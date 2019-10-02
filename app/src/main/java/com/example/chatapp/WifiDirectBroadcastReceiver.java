@@ -33,6 +33,10 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
                 Toast.makeText(context,"WiFi is Off",Toast.LENGTH_SHORT).show();
             }
         }else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)){
+            //Calling the peer listener when peer changed action
+            if(p2pmanger!=null){
+                p2pmanger.requestPeers(p2pchannel,p2pActivity.peerListListener);
+            }
 
         }else if(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)){
 
