@@ -10,6 +10,7 @@ import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -30,13 +31,13 @@ public class MainActivity extends AppCompatActivity {
     WifiManager manger;
 
     //Wifi direct P2P manger variables
-    WifiP2pManager p2pManager;
-    WifiP2pManager.Channel p2pChannel;
-    MainActivity p2pMainactivity;
+    WifiP2pManager pManager;
+    WifiP2pManager.Channel pChannel;
+    MainActivity pMainactivity;
 
     //BroadcastReceiver Variables
-    BroadcastReceiver p2pReceiver;
-    IntentFilter p2pIntentFilter;
+    BroadcastReceiver pReceiver;
+    IntentFilter pIntentFilter;
 
     //List of devices connected
     List<WifiP2pDevice> peers= new ArrayList<WifiP2pDevice>();
@@ -52,6 +53,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void btnListener() {
+        if (manger.isWifiEnabled()){
+            btnOnOff.setText("Wifi Off");
+        }
+        else {
+            btnOnOff.setText("Wifi On");
+        }
         //Adding a button listener to turn the wifi on and off
         btnOnOff.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -62,7 +69,7 @@ public class MainActivity extends AppCompatActivity {
                 }
                 else {
                     manger.setWifiEnabled(true);
-                    btnOnOff.setText("Wifi OFF");
+                    btnOnOff.setText("Wifi Off");
                 }
             }
         });
@@ -71,7 +78,7 @@ public class MainActivity extends AppCompatActivity {
         btnDiscover.setOnClickListener(new View.OnClickListener() {
             public void onClick(View view) {
                 //Discovering nearby peers
-                p2pManager.discoverPeers(p2pChannel, new WifiP2pManager.ActionListener() {
+                pManager.discoverPeers(pChannel, new WifiP2pManager.ActionListener() {
 
                     //Called when discovery starts successfully
                     public void onSuccess() {
@@ -85,6 +92,34 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
         });
+    }
+    private void OnStart(){
+        btnOnOff=(Button) findViewById(R.id.onOff);
+        btnDiscover=(Button) findViewById(R.id.discover);
+        btnSend=(Button) findViewById(R.id.sendButton);
+        listView=(ListView) findViewById(R.id.peerListView);
+        read_msg_box=(TextView) findViewById(R.id.readMsg);
+        conncection_status=(TextView) findViewById(R.id.connectionStatus);
+        write_msg=(EditText)findViewById(R.id.writeMsg);
+
+        manger= (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+
+        //P2P channel and manger initialization
+        pManager=(WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
+        pChannel=pManager.initialize(this,getMainLooper(),null);
+
+        //initialization of Wifi Direct Broadcast Receiver
+        pReceiver=new WifiDirectBroadcastReceiver(pManager,pChannel,this);
+
+        //initializing the intent filter
+        pIntentFilter=new IntentFilter();
+
+        //adding actions to listen to to the intents received by the Wifi direct API
+        pIntentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
+        pIntentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
+        pIntentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
+        pIntentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
+
     }
 
     //Listening for new peers
@@ -118,45 +153,17 @@ public class MainActivity extends AppCompatActivity {
 
         }
     };
-
-    private void OnStart(){
-        btnOnOff=(Button) findViewById(R.id.onOff);
-        btnDiscover=(Button) findViewById(R.id.discover);
-        btnSend=(Button) findViewById(R.id.sendButton);
-        listView=(ListView) findViewById(R.id.peerListView);
-        read_msg_box=(TextView) findViewById(R.id.readMsg);
-        conncection_status=(TextView) findViewById(R.id.connectionStatus);
-        write_msg=(EditText)findViewById(R.id.writeMsg);
-
-        manger= (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-
-        //P2P channel and manger initialization
-        p2pManager=(WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
-        p2pChannel=p2pManager.initialize(this,getMainLooper(),null);
-
-        //initialization of Wifi Direct Broadcast Receiver
-        p2pReceiver=new WifiDirectBroadcastReceiver(p2pManager,p2pChannel,this);
-
-        //initializing the intent filter
-        p2pIntentFilter=new IntentFilter();
-
-        //adding actions to listen to to the intents received by the Wifi direct API
-        p2pIntentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
-        p2pIntentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
-        p2pIntentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
-        p2pIntentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
-
-    }
+    //
 
     //Called when an activity resumes after being paused
     protected void onResume() {
         super.onResume();
-        registerReceiver(p2pReceiver,p2pIntentFilter);
+        registerReceiver(pReceiver,pIntentFilter);
     }
 
     //Called when an activity is hidden from view
     protected void onPause() {
         super.onPause();
-        unregisterReceiver(p2pReceiver);
+        unregisterReceiver(pReceiver);
     }
 }

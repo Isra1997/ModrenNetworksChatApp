@@ -8,15 +8,15 @@ import android.widget.Toast;
 
 //This class listens to System broadcasts (eg:-battery low) and Custom broadcasts(eg:-update of user details)
 public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
-    private WifiP2pManager p2pmanger;
-    private WifiP2pManager.Channel p2pchannel;
-    private MainActivity p2pActivity;
+    private WifiP2pManager pmanger;
+    private WifiP2pManager.Channel pchannel;
+    private MainActivity pActivity;
 
 
-    public WifiDirectBroadcastReceiver(WifiP2pManager p2pmanger, WifiP2pManager.Channel p2pchannel, MainActivity p2pActivity){
-        this.p2pmanger=p2pmanger;
-        this.p2pActivity= p2pActivity;
-        this.p2pchannel=p2pchannel;
+    public WifiDirectBroadcastReceiver(WifiP2pManager pmanger, WifiP2pManager.Channel pchannel, MainActivity pActivity){
+        this.pmanger=pmanger;
+        this.pActivity= pActivity;
+        this.pchannel=pchannel;
     }
 
     //listens to different intents that happen during the WiFi direct P2P connection
@@ -29,15 +29,15 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
                 Toast.makeText(context,"WiFi is On",Toast.LENGTH_SHORT).show();
             }
             else {
-                //Display's an alert when the wifi is turned on or offclear
+                //Display's an alert when the wifi is turned on or off clear
                 Toast.makeText(context,"WiFi is Off",Toast.LENGTH_SHORT).show();
             }
         }else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)){
-            //Calling the peer listener when peer changed action
-            if(p2pmanger!=null){
-                p2pmanger.requestPeers(p2pchannel,p2pActivity.peerListListener);
-            }
+            System.out.println("Peer change!");
+            if (pmanger!=null){
+                pmanger.requestPeers(pchannel,pActivity.peerListListener);
 
+            }
         }else if(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)){
 
         }else if(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)){
