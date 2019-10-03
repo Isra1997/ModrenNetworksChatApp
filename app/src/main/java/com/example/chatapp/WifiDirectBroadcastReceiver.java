@@ -3,6 +3,7 @@ package com.example.chatapp;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.net.NetworkInfo;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.widget.Toast;
 
@@ -33,12 +34,27 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
                 Toast.makeText(context,"WiFi is Off",Toast.LENGTH_SHORT).show();
             }
         }else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)){
-            System.out.println("Peer change!");
             if (pmanger!=null){
+                //Invoking the Peer List listener in the main activity class
                 pmanger.requestPeers(pchannel,pActivity.peerListListener);
-
             }
         }else if(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)){
+            if (pmanger==null){
+                return;
+            }
+
+            //Getting the network information from the received intent
+            NetworkInfo networkInfo=intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
+
+            //If the device is connected we invoke the connection
+            // info listener in the main activity class
+            // else the device is considered to be disconnected
+            if (networkInfo.isConnected()){
+                pmanger.requestConnectionInfo(pchannel,pActivity.ConnectionInfoListener);
+            }
+            else {
+                pActivity.conncection_status.setText("Your Device is disconnected.");
+            }
 
         }else if(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)){
 
