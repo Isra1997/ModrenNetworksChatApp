@@ -1,5 +1,6 @@
 package com.example.chatapp;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.BroadcastReceiver;
@@ -12,6 +13,8 @@ import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -23,6 +26,8 @@ import android.net.wifi.WifiManager;
 import android.widget.Toast;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -52,6 +57,13 @@ public class MainActivity extends AppCompatActivity {
     String[] DeviceNames;
     WifiP2pDevice[] DeviceArray;
 
+    //Variable for threads and sockets
+    static final int MESSAGE_READ=1;
+    HostClass hostClass;
+    ClientClass clientClass;
+    SendReceive sendReceive;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -59,6 +71,24 @@ public class MainActivity extends AppCompatActivity {
         OnStart();
         Listeners();
     }
+
+    //Allows communication between the UI and the threads
+    //A Handler allows you to send and process
+    // Message and Runnable objects associated with a thread's MessageQueue
+    Handler handler=new Handler(new Handler.Callback() {
+        @Override
+        public boolean handleMessage(@NonNull Message message) {
+            switch (message.what){
+
+                case MESSAGE_READ:
+                    byte [] readbuff= (byte[]) message.obj;
+                    String temp=new String(readbuff,0,message.arg1);
+                    read_msg_box.setText(temp);
+                    break;
+            }
+            return true;
+        }
+    });
 
     private void Listeners() {
         if (manger.isWifiEnabled()){
@@ -123,6 +153,15 @@ public class MainActivity extends AppCompatActivity {
                         Toast.makeText(getApplicationContext(),"Unable to connect to the request device",Toast.LENGTH_SHORT).show();
                     }
                 });
+            }
+        });
+
+        //Listening to the send button
+        btnSend.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String msg=write_msg.getText().toString();
+                sendReceive.write(msg.getBytes());
             }
         });
     }
@@ -198,8 +237,12 @@ public class MainActivity extends AppCompatActivity {
             //checking is the device is the group owner to see who is the host and who is the client
             if (wifiP2pInfo.isGroupOwner && wifiP2pInfo.groupFormed){
                 conncection_status.setText("Host device");
+                hostClass=new HostClass();
+                hostClass.start();
             } else if (wifiP2pInfo.groupFormed){
                 conncection_status.setText("Client device");
+                clientClass=new ClientClass(groupOwnerAddress);
+                clientClass.start();
             }
         }
     };
@@ -216,6 +259,47 @@ public class MainActivity extends AppCompatActivity {
         unregisterReceiver(pReceiver);
     }
 
+    private class SendReceive extends Thread{
+        private Socket socket;
+        private OutputStream outputStream;
+        private InputStream inputStream;
+
+        public SendReceive(Socket socket){
+            this.socket=socket;
+            try {
+                this.outputStream=socket.getOutputStream();
+                this.inputStream=socket.getInputStream();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        @Override
+        public void run() {
+            byte[] buffer=new byte[1044];
+            int bytes;
+
+            while (socket!=null){
+                try {
+                    bytes=inputStream.read(buffer);
+                    if(bytes>0){
+                        handler.obtainMessage(MESSAGE_READ,bytes,-1,buffer).sendToTarget();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        public void write(byte[] bytes){
+            try {
+                outputStream.write(bytes);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+    
     public class HostClass extends Thread{
         Socket socket;
         ServerSocket serverSocket;
@@ -225,6 +309,8 @@ public class MainActivity extends AppCompatActivity {
             try {
                 serverSocket=new ServerSocket(8888);
                 socket=serverSocket.accept();
+                sendReceive=new SendReceive(socket);
+                sendReceive.start();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -238,6 +324,8 @@ public class MainActivity extends AppCompatActivity {
         public ClientClass(InetAddress HostAddress){
             this.HostName=HostAddress.getHostName();
             socket=new Socket();
+            sendReceive=new SendReceive(socket);
+            sendReceive.start();
         }
         @Override
         public void run() {
