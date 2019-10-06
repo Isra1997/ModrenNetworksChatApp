@@ -6,12 +6,12 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
-import android.net.InetAddresses;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -57,11 +57,8 @@ public class MainActivity extends AppCompatActivity {
     String[] DeviceNames;
     WifiP2pDevice[] DeviceArray;
 
-    //Variable for threads and sockets
-    static final int MESSAGE_READ=1;
-    HostClass hostClass;
-    ClientClass clientClass;
-    SendReceive sendReceive;
+
+
 
 
     @Override
@@ -72,23 +69,6 @@ public class MainActivity extends AppCompatActivity {
         Listeners();
     }
 
-    //Allows communication between the UI and the threads
-    //A Handler allows you to send and process
-    // Message and Runnable objects associated with a thread's MessageQueue
-    Handler handler=new Handler(new Handler.Callback() {
-        @Override
-        public boolean handleMessage(@NonNull Message message) {
-            switch (message.what){
-
-                case MESSAGE_READ:
-                    byte [] readbuff= (byte[]) message.obj;
-                    String temp=new String(readbuff,0,message.arg1);
-                    read_msg_box.setText(temp);
-                    break;
-            }
-            return true;
-        }
-    });
 
     private void Listeners() {
         if (manger.isWifiEnabled()){
@@ -128,6 +108,10 @@ public class MainActivity extends AppCompatActivity {
                         conncection_status.setText("Discovery Failed!");
                     }
                 });
+
+
+
+
             }
         });
 
@@ -156,14 +140,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        //Listening to the send button
-        btnSend.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                String msg=write_msg.getText().toString();
-                sendReceive.write(msg.getBytes());
-            }
-        });
+
     }
     //Initializing the App view,wifi manager,wifi p2p manager,intent filter and adding actions to the intents
     private void OnStart(){
@@ -227,25 +204,8 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    //Listening to the connection information after successful connection
-    WifiP2pManager.ConnectionInfoListener ConnectionInfoListener=new WifiP2pManager.ConnectionInfoListener() {
-        @Override
-        public void onConnectionInfoAvailable(WifiP2pInfo wifiP2pInfo) {
-            //get the ip address of the group owner
-            final InetAddress groupOwnerAddress= wifiP2pInfo.groupOwnerAddress;
 
-            //checking is the device is the group owner to see who is the host and who is the client
-            if (wifiP2pInfo.isGroupOwner && wifiP2pInfo.groupFormed){
-                conncection_status.setText("Host device");
-                hostClass=new HostClass();
-                hostClass.start();
-            } else if (wifiP2pInfo.groupFormed){
-                conncection_status.setText("Client device");
-                clientClass=new ClientClass(groupOwnerAddress);
-                clientClass.start();
-            }
-        }
-    };
+
 
     //Called when an activity resumes after being paused
     protected void onResume() {
@@ -259,81 +219,4 @@ public class MainActivity extends AppCompatActivity {
         unregisterReceiver(pReceiver);
     }
 
-    private class SendReceive extends Thread{
-        private Socket socket;
-        private OutputStream outputStream;
-        private InputStream inputStream;
-
-        public SendReceive(Socket socket){
-            this.socket=socket;
-            try {
-                this.outputStream=socket.getOutputStream();
-                this.inputStream=socket.getInputStream();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        @Override
-        public void run() {
-            byte[] buffer=new byte[1044];
-            int bytes;
-
-            while (socket!=null){
-                try {
-                    bytes=inputStream.read(buffer);
-                    if(bytes>0){
-                        handler.obtainMessage(MESSAGE_READ,bytes,-1,buffer).sendToTarget();
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        public void write(byte[] bytes){
-            try {
-                outputStream.write(bytes);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-    
-    public class HostClass extends Thread{
-        Socket socket;
-        ServerSocket serverSocket;
-
-        @Override
-        public void run() {
-            try {
-                serverSocket=new ServerSocket(8888);
-                socket=serverSocket.accept();
-                sendReceive=new SendReceive(socket);
-                sendReceive.start();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    public class  ClientClass extends Thread{
-        Socket socket;
-        String HostName;
-
-        public ClientClass(InetAddress HostAddress){
-            this.HostName=HostAddress.getHostName();
-            socket=new Socket();
-            sendReceive=new SendReceive(socket);
-            sendReceive.start();
-        }
-        @Override
-        public void run() {
-            try {
-                socket.connect(new InetSocketAddress(HostName,8888),500);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
 }
