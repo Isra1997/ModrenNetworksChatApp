@@ -5,6 +5,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
+import android.net.wifi.WpsInfo;
+import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
@@ -93,6 +95,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
     private void OnStart(){
         btnOnOff=(Button) findViewById(R.id.onOff);
         btnDiscover=(Button) findViewById(R.id.discover);
@@ -108,8 +111,7 @@ public class MainActivity extends AppCompatActivity {
         pManager=(WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         pChannel=pManager.initialize(this,getMainLooper(),null);
 
-        //initialization of Wifi Direct Broadcast Receiver
-        pReceiver=new WifiDirectBroadcastReceiver(pManager,pChannel,this);
+
 
         //initializing the intent filter
         pIntentFilter=new IntentFilter();
@@ -158,6 +160,8 @@ public class MainActivity extends AppCompatActivity {
     //Called when an activity resumes after being paused
     protected void onResume() {
         super.onResume();
+        //initialization of Wifi Direct Broadcast Receiver
+        pReceiver=new WifiDirectBroadcastReceiver(pManager,pChannel,this);
         registerReceiver(pReceiver,pIntentFilter);
     }
 
@@ -166,4 +170,5 @@ public class MainActivity extends AppCompatActivity {
         super.onPause();
         unregisterReceiver(pReceiver);
     }
+
 }
