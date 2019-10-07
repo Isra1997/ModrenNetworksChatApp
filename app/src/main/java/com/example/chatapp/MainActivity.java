@@ -64,7 +64,10 @@ public class MainActivity extends AppCompatActivity {
     SendReceive sendReceive;
 
 
-
+    //ArrayList of Send receive
+    List<SendReceive> conn=new ArrayList<SendReceive>();
+    //Name of the device connected to
+    String ConnectedTo;
 
 
     @Override
@@ -140,6 +143,7 @@ public class MainActivity extends AppCompatActivity {
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
                 //Getting the clicked device from the array
                 final WifiP2pDevice device=DeviceArray[i];
+                ConnectedTo=DeviceNames[i];
                 //Creating a new config instance
                 WifiP2pConfig config=new WifiP2pConfig();
                 config.deviceAddress=device.deviceAddress;
@@ -274,15 +278,18 @@ public class MainActivity extends AppCompatActivity {
             private InputStream inputStream;
             private OutputStream outputStream;
 
+
             public SendReceive(Socket skt)
             {
                 socket=skt;
+
                 try {
                     inputStream=socket.getInputStream();
                     outputStream=socket.getOutputStream();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+                conn.add(this);
             }
 
             @Override
@@ -305,12 +312,16 @@ public class MainActivity extends AppCompatActivity {
             }
             public void write(byte[] bytes)
             {
+
                 try {
                     outputStream.write(bytes);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
+
+
+
         }
     
     public class HostClass extends Thread{
