@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="com.example.chatapp.MainActivity">
+    tools:context="com.sarthitechnology.wi_fip2p.MainActivity">
 
     <Button
         android:id="@+id/onOff"
@@ -29,10 +29,10 @@
         android:id="@+id/peerListView"
         android:layout_width="match_parent"
         android:layout_height="200dp"
-        android:layout_below="@+id/onOff"
         android:layout_alignParentStart="true"
+        android:layout_below="@+id/onOff"
         android:layout_marginTop="25dp"
-        android:background="#F44336" />
+        android:background="@android:color/holo_orange_light" />
 
     <TextView
         android:id="@+id/readMsg"
