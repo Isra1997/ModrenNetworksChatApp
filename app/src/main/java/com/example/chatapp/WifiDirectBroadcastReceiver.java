@@ -9,15 +9,15 @@ import android.widget.Toast;
 
 //This class listens to System broadcasts (eg:-battery low) and Custom broadcasts(eg:-update of user details)
 public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
-    private WifiP2pManager pmanger;
-    private WifiP2pManager.Channel pchannel;
+    private WifiP2pManager manger;
+    private WifiP2pManager.Channel channel;
     private MainActivity pActivity;
 
 
     public WifiDirectBroadcastReceiver(WifiP2pManager pmanger, WifiP2pManager.Channel pchannel, MainActivity pActivity){
-        this.pmanger=pmanger;
+        this.manger=pmanger;
         this.pActivity= pActivity;
-        this.pchannel=pchannel;
+        this.channel=pchannel;
     }
 
     //listens to different intents that happen during the WiFi direct P2P connection
@@ -34,27 +34,24 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
                 Toast.makeText(context,"WiFi is Off",Toast.LENGTH_SHORT).show();
             }
         }else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)){
-            if (pmanger!=null){
+            if (manger!=null){
                 //Invoking the Peer List listener in the main activity class
 
-                pmanger.requestPeers(pchannel,pActivity.peerListListener);
+                manger.requestPeers(channel,pActivity.peerListListener);
             }
         }else if(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)){
-            if (pmanger==null){
+            if(manger==null)
+            {
                 return;
             }
 
-            //Getting the network information from the received intent
             NetworkInfo networkInfo=intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
 
-            //If the device is connected we invoke the connection
-            // info listener in the main activity class
-            // else the device is considered to be disconnected
-            if (networkInfo.isConnected()){
-                pmanger.requestConnectionInfo(pchannel,pActivity.ConnectionInfoListener);
-            }
-            else {
-                pActivity.conncection_status.setText("Your Device is disconnected.");
+            if(networkInfo.isConnected())
+            {
+                manger.requestConnectionInfo(channel,pActivity.connectionInfoListener);
+            }else {
+                pActivity.conncection_status.setText("Device Disconnected");
             }
 
         }else if(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)){

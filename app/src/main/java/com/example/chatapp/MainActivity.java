@@ -24,7 +24,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.net.wifi.WifiManager;
 import android.widget.Toast;
-
+import android.os.StrictMode;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -62,6 +62,9 @@ public class MainActivity extends AppCompatActivity {
     HostClass hostClass;
     ClientClass clientClass;
     SendReceive sendReceive;
+
+
+
 
 
     @Override
@@ -167,6 +170,10 @@ public class MainActivity extends AppCompatActivity {
     }
     //Initializing the App view,wifi manager,wifi p2p manager,intent filter and adding actions to the intents
     private void OnStart(){
+
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+        StrictMode.setThreadPolicy(policy);
+
         btnOnOff=(Button) findViewById(R.id.onOff);
         btnDiscover=(Button) findViewById(R.id.discover);
         btnSend=(Button) findViewById(R.id.sendButton);
@@ -228,19 +235,21 @@ public class MainActivity extends AppCompatActivity {
     };
 
     //Listening to the connection information after successful connection
-    WifiP2pManager.ConnectionInfoListener ConnectionInfoListener=new WifiP2pManager.ConnectionInfoListener() {
+    WifiP2pManager.ConnectionInfoListener connectionInfoListener=new WifiP2pManager.ConnectionInfoListener() {
         @Override
         public void onConnectionInfoAvailable(WifiP2pInfo wifiP2pInfo) {
-            //get the ip address of the group owner
-            final InetAddress groupOwnerAddress= wifiP2pInfo.groupOwnerAddress;
 
-            //checking is the device is the group owner to see who is the host and who is the client
-            if (wifiP2pInfo.isGroupOwner && wifiP2pInfo.groupFormed){
-                conncection_status.setText("Host device");
+            final InetAddress groupOwnerAddress=wifiP2pInfo.groupOwnerAddress;
+
+            if(wifiP2pInfo.groupFormed && wifiP2pInfo.isGroupOwner)
+            {
+                conncection_status.setText("Host");
                 hostClass=new HostClass();
-                hostClass.start();
-            } else if (wifiP2pInfo.groupFormed){
-                conncection_status.setText("Client device");
+               hostClass.start();
+
+            }else if(wifiP2pInfo.groupFormed)
+            {
+                conncection_status.setText("Client");
                 clientClass=new ClientClass(groupOwnerAddress);
                 clientClass.start();
             }
@@ -259,46 +268,50 @@ public class MainActivity extends AppCompatActivity {
         unregisterReceiver(pReceiver);
     }
 
-    private class SendReceive extends Thread{
-        private Socket socket;
-        private OutputStream outputStream;
-        private InputStream inputStream;
 
-        public SendReceive(Socket socket){
-            this.socket=socket;
-            try {
-                this.outputStream=socket.getOutputStream();
-                this.inputStream=socket.getInputStream();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
+        private class SendReceive extends Thread{
+            private Socket socket;
+            private InputStream inputStream;
+            private OutputStream outputStream;
 
-        @Override
-        public void run() {
-            byte[] buffer=new byte[1044];
-            int bytes;
-
-            while (socket!=null){
+            public SendReceive(Socket skt)
+            {
+                socket=skt;
                 try {
-                    bytes=inputStream.read(buffer);
-                    if(bytes>0){
-                        handler.obtainMessage(MESSAGE_READ,bytes,-1,buffer).sendToTarget();
+                    inputStream=socket.getInputStream();
+                    outputStream=socket.getOutputStream();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            @Override
+            public void run() {
+                byte[] buffer=new byte[1024];
+                int bytes;
+
+                while (socket!=null)
+                {
+                    try {
+                        bytes=inputStream.read(buffer);
+                        if(bytes>0)
+                        {
+                            handler.obtainMessage(MESSAGE_READ,bytes,-1,buffer).sendToTarget();
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
+                }
+            }
+            public void write(byte[] bytes)
+            {
+                try {
+                    outputStream.write(bytes);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
         }
-
-        public void write(byte[] bytes){
-            try {
-                outputStream.write(bytes);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
     
     public class HostClass extends Thread{
         Socket socket;
@@ -310,6 +323,7 @@ public class MainActivity extends AppCompatActivity {
                 serverSocket=new ServerSocket(8888);
                 socket=serverSocket.accept();
                 sendReceive=new SendReceive(socket);
+
                 sendReceive.start();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -317,20 +331,22 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public class  ClientClass extends Thread{
+    public class ClientClass extends Thread{
         Socket socket;
-        String HostName;
+        String hostAdd;
 
-        public ClientClass(InetAddress HostAddress){
-            this.HostName=HostAddress.getHostName();
+        public  ClientClass(InetAddress hostAddress)
+        {
+            hostAdd=hostAddress.getHostAddress();
             socket=new Socket();
-            sendReceive=new SendReceive(socket);
-            sendReceive.start();
         }
+
         @Override
         public void run() {
             try {
-                socket.connect(new InetSocketAddress(HostName,8888),500);
+                socket.connect(new InetSocketAddress(hostAdd,8888),500);
+                sendReceive=new SendReceive(socket);
+                sendReceive.start();
             } catch (IOException e) {
                 e.printStackTrace();
             }
