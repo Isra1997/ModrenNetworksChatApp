@@ -63,11 +63,10 @@ public class MainActivity extends AppCompatActivity {
     ClientClass clientClass;
     SendReceive sendReceive;
 
-
-    //ArrayList of Send receive
-    List<SendReceive> conn=new ArrayList<SendReceive>();
-    //Name of the device connected to
+    //Multihop variables
     String ConnectedTo;
+    String HostName;
+
 
 
     @Override
@@ -143,7 +142,7 @@ public class MainActivity extends AppCompatActivity {
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
                 //Getting the clicked device from the array
                 final WifiP2pDevice device=DeviceArray[i];
-                ConnectedTo=DeviceNames[i];
+
                 //Creating a new config instance
                 WifiP2pConfig config=new WifiP2pConfig();
                 config.deviceAddress=device.deviceAddress;
@@ -152,6 +151,7 @@ public class MainActivity extends AppCompatActivity {
                 pManager.connect(pChannel, config, new WifiP2pManager.ActionListener() {
                     @Override
                     public void onSuccess() {
+                        ConnectedTo=device.deviceName;
                         Toast.makeText(getApplicationContext(),"Connected to "+device.deviceName,Toast.LENGTH_SHORT).show();
                     }
 
@@ -249,7 +249,7 @@ public class MainActivity extends AppCompatActivity {
             {
                 conncection_status.setText("Host");
                 hostClass=new HostClass();
-               hostClass.start();
+                hostClass.start();
 
             }else if(wifiP2pInfo.groupFormed)
             {
@@ -277,19 +277,19 @@ public class MainActivity extends AppCompatActivity {
             private Socket socket;
             private InputStream inputStream;
             private OutputStream outputStream;
+            private String connectedTo;
 
 
-            public SendReceive(Socket skt)
+            public SendReceive(Socket skt,String ConnectedTo)
             {
                 socket=skt;
-
+                connectedTo=ConnectedTo;
                 try {
                     inputStream=socket.getInputStream();
                     outputStream=socket.getOutputStream();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                conn.add(this);
             }
 
             @Override
@@ -312,35 +312,64 @@ public class MainActivity extends AppCompatActivity {
             }
             public void write(byte[] bytes)
             {
-
-                try {
-                    outputStream.write(bytes);
-                } catch (IOException e) {
-                    e.printStackTrace();
+                if (ConnectedTo!=""){
+                    if(ConnectedTo==HostName){
+                        try {
+                            outputStream.write(bytes);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    else{
+                        hostClass.forwardMessage(bytes,ConnectedTo);
+                    }
                 }
+
             }
 
+            public String getConnectedTo(){
+              return connectedTo;
+            }
 
-
+            public OutputStream getOutputStream() {
+                return outputStream;
+            }
         }
+
+
     
     public class HostClass extends Thread{
         Socket socket;
         ServerSocket serverSocket;
+        ArrayList<SendReceive> connections=new ArrayList<SendReceive>();
 
         @Override
         public void run() {
             try {
                 serverSocket=new ServerSocket(8888);
                 socket=serverSocket.accept();
-                sendReceive=new SendReceive(socket);
-
+                sendReceive=new SendReceive(socket,ConnectedTo);
                 sendReceive.start();
+                connections.add(sendReceive);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+
+        public void forwardMessage(byte[] bytes,String wantedDevice){
+            for (int i=0;i<connections.size();i++){
+                if(connections.get(i).getConnectedTo()==wantedDevice){
+                    try {
+                        connections.get(i).getOutputStream().write(bytes);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    break;
+                }
+            }
+        }
     }
+
 
     public class ClientClass extends Thread{
         Socket socket;
@@ -348,6 +377,7 @@ public class MainActivity extends AppCompatActivity {
 
         public  ClientClass(InetAddress hostAddress)
         {
+            HostName=hostAddress.getHostName();
             hostAdd=hostAddress.getHostAddress();
             socket=new Socket();
         }
@@ -356,7 +386,7 @@ public class MainActivity extends AppCompatActivity {
         public void run() {
             try {
                 socket.connect(new InetSocketAddress(hostAdd,8888),500);
-                sendReceive=new SendReceive(socket);
+                sendReceive=new SendReceive(socket,ConnectedTo);
                 sendReceive.start();
             } catch (IOException e) {
                 e.printStackTrace();
